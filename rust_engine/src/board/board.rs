@@ -197,21 +197,27 @@ impl Board {
             .filter(|&&(x, y)| self.is_player(x, y, p)).cloned().collect()
     }
 
-    fn move_piece_v(&self, x: i32, y: i32, ydirection: i32, p: Player, v: &mut Vec<(i32, i32)>) {
-        let dy1 = ydirection;
-        let dy2 = ydirection * 2;
-        if self.is_empty(x - 1, y + dy1) {
-            v.push((x - 1, y + dy1));
+    fn move_piece(&self, x: i32, y: i32, dy: i32, p: Player, v: &mut [(i32, i32)], pos: usize) -> usize {
+
+        let mut i = pos;
+
+        if self.is_empty(x - 1, y + dy) {
+            v[i] = (x - 1, y + dy);
+            i += 1;
         }
-        if self.is_empty(x + 1, y + dy1) {
-            v.push((x + 1, y + dy1));
+        if self.is_empty(x + 1, y + dy) {
+            v[i] = (x + 1, y + dy);
+            i += 1;
         }
-        if self.is_empty(x - 2, y + dy2) && self.is_player(x - 1, y + dy1, p) {
-            v.push((x - 2, y + dy2));
+        if self.is_empty(x - 2, y + dy * 2) && self.is_player(x - 1, y + dy, p) {
+            v[i] = (x - 2, y + dy * 2);
+            i += 1;
         }
-        if self.is_empty(x + 2, y + dy2) && self.is_player(x + 1, y + dy1, p) {
-            v.push((x + 2, y + dy2));
+        if self.is_empty(x + 2, y + dy * 2) && self.is_player(x + 1, y + dy, p) {
+            v[i] = (x + 2, y + dy * 2);
+            i += 1;
         }
+        i
     }
 
     // Checks if the piece at (x, y) of the current player can jump over a piece of the opponent.
@@ -263,27 +269,28 @@ impl Board {
         }
     }
 
-    // Returns points which the piece at (x, y) can move to.
+    // Returns points to which the piece at (x, y) can move to.
     fn moves_for(&self, x: i32, y: i32) -> Option<Vec<Point>> {
-        let mut v: Vec<(i32, i32)> = Vec::new();
+        let mut v: [(i32, i32); 4] = [(0, 0); 4];
+        let mut pos = 0;
 
         match self.color(x, y) {
             Some(c) => {
                 if self.matching(c) {
                     match c {
                         Color::WhiteNormal => {
-                            self.move_piece_v(x, y, 1, Player::Black, &mut v);
+                            pos = self.move_piece(x, y, 1, Player::Black, &mut v, pos);
                         },
                         Color::WhiteDame => {
-                            self.move_piece_v(x, y, 1, Player::Black, &mut v);
-                            self.move_piece_v(x, y, -1, Player::Black, &mut v);
+                            pos = self.move_piece(x, y, 1, Player::Black, &mut v, pos);
+                            pos = self.move_piece(x, y, -1, Player::Black, &mut v, pos);
                         },
                         Color::BlackNormal => {
-                            self.move_piece_v(x, y, -1, Player::White, &mut v);
+                            pos = self.move_piece(x, y, -1, Player::White, &mut v, pos);
                         },
                         Color::BlackDame => {
-                            self.move_piece_v(x, y, 1, Player::White, &mut v);
-                            self.move_piece_v(x, y, -1, Player::White, &mut v);
+                            pos = self.move_piece(x, y, 1, Player::White, &mut v, pos);
+                            pos = self.move_piece(x, y, -1, Player::White, &mut v, pos);
                         },
                         _ => { }
                     }
@@ -293,19 +300,19 @@ impl Board {
         }
 
 
-                let r: Vec<Point> = v.clone().iter()
-                    .filter(|&&(_, dy)| (dy - y).abs() == 2).map(|&(x, y)| Point::new(x, y))
-                    .collect();
-                if r.len() > 0 {
-                    Some(r)
-                } else {
-                    let r: Vec<Point> = v.iter().map(|&(x, y)| Point::new(x, y)).collect();
-                    if r.len() > 0 {
-                        Some(r)
-                    } else {
-                        None
-                    }
-                }
+        let r: Vec<Point> = v.iter().take(pos)
+            .filter(|&&(_, dy)| (dy - y).abs() == 2).map(|&(x, y)| Point::new(x, y))
+            .collect();
+        if r.len() > 0 {
+            Some(r)
+        } else {
+            let r: Vec<Point> = v.iter().take(pos).map(|&(x, y)| Point::new(x, y)).collect();
+            if r.len() > 0 {
+                Some(r)
+            } else {
+                None
+            }
+        }
     }
 
     pub fn clear_last_moves(&mut self) {
