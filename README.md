@@ -1,6 +1,6 @@
 # Checkers
 
-# Running
+## Running
 
 ```bash
 make html-run
@@ -9,7 +9,7 @@ make rest
 
 Go to `http://localhost:10002` and have fun playing checkers.
 
-# Rules
+## Rules
 * white makes the first move
 * it is played on a 8x8 board
 * men can capture only forward
