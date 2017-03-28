@@ -56,19 +56,9 @@ impl Board {
             .map(|(idx, _)| (idx as i32 % 8, idx as i32 / 8)).collect::<Vec<_>>()
     }
 
-    fn remove_position(&mut self, x: usize, y: usize) {
-        let n = self.positions.len();
-        for i in 0..n {
-            if self.positions[i].0 as usize == x && self.positions[i].1 as usize == y {
-                if i + 1 != n {
-                    self.positions[i] = self.positions[n - 1];
-                }
-                self.positions.truncate(n - 1);
-                break;
-            }
-        }
-//        self.positions = self.positions.iter().filter(|&a| a.0 != x as i32 || a.1 != y as i32)
-//            .cloned().collect();
+    fn remove_position(&mut self, x: i32, y: i32) {
+        let p = self.positions.iter().position(|&i| i == (x, y)).unwrap();
+        self.positions.swap_remove(p);
     }
 
     pub fn from(v: Vec<Color>) -> Board {
@@ -207,6 +197,7 @@ impl Board {
             .filter(|&&(x, y)| self.is_player(x, y, p)).cloned().collect()
     }
 
+    // TODO: optimize speed; makes many calls to "reserve" and "alloc"
     fn move_piece(&self, x: i32, y: i32, ydirection: i32, p: Player) -> Vec<(i32, i32)> {
         let dy1 = ydirection;
         let dy2 = ydirection * 2;
@@ -239,11 +230,6 @@ impl Board {
         self.valid_pieces_to_move.iter()
             .any(|&(px, py)| px == x && py == y)
     }
-
-//    fn non_empty_points(&self) -> Vec<(i32, i32)> {
-//        self.positions.clone()
-//        //(0..64).filter(|&i| self.board[i] != Color::Empty).map(|i| (i as i32 % 8, i as i32 / 8)).collect()
-//    }
 
     fn pieces_that_can_move(&self) -> Vec<(i32, i32)> { // XXX
         self.positions.iter()
@@ -278,6 +264,8 @@ impl Board {
 
     // Returns points which the piece at (x, y) can move to.
     fn moves_for(&self, x: i32, y: i32) -> Option<Vec<Point>> {
+//        let mut vv: Vec<(i32, i32)> = Vec::new();
+
         match match self.color(x, y) {
             Some(c) => {
                 if self.matching(c) {
@@ -348,9 +336,8 @@ impl Board {
         self.move_no += 1;
 
         // Jump to new position.
-        // TODO: update positions
         self.positions.push((q as i32 % 8, q as i32 / 8));
-        self.remove_position(p % 8, p / 8);
+        self.remove_position(p as i32 % 8, p as i32 / 8);
         self.board[q] = self.board[p];
         self.board[p] = Color::Empty;
 
@@ -358,8 +345,7 @@ impl Board {
         let mut removed = false;
         if (dx - x).abs() == 2 {
             let pp = self.index(x + (dx - x) / 2, y + (dy - y) / 2).unwrap();
-            // TODO: update positions
-            self.remove_position(pp % 8, pp / 8);
+            self.remove_position(pp as i32 % 8, pp as i32 / 8);
             self.board[pp] = Color::Empty;
             removed = true;
         }
