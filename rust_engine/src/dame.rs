@@ -31,9 +31,33 @@ impl std::fmt::Display for DameMove {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Dame {
     pub b: Board,
     pub ai: board::Player
+}
+
+impl Dame {
+
+    pub fn new(b: Board) -> Dame {
+        let p = b.player();
+        Dame {
+            b: b,
+            ai: p,
+        }
+    }
+
+    fn avg_distance(a: Vec<(i32, i32)>, b: Vec<(i32, i32)>) -> f64 {
+
+        let mut d = 0.0;
+        if a.len() > 0 && b.len() > 0 {
+            let s: f64 = a.iter().map(|&(x, y)|
+                b.iter().map(|&(bx, by)| ((bx - x).pow(2) as f64 + (by - y).pow(2) as f64).sqrt()).collect::<Vec<_>>()
+            ).flat_map(|x| x).sum();
+            d = s / (a.len() as f64 * b.len() as f64);
+        }
+        d
+    }
 }
 
 impl Game<DameMove> for Dame {
@@ -79,17 +103,12 @@ impl Game<DameMove> for Dame {
         let s3: f64 = d_ai as f64;
 
         // if AI has more pieces play more aggressive
-        let a = self.b.positions(self.ai);
-        let b = self.b.positions(self.b.other_player(self.ai));
-        if a.len() > 0 && b.len() > 0 && a.len() > b.len() {
-            let mut s: f64 = a.iter().map(|&(x, y)|
-                b.iter().map(|&(bx, by)| ((bx - x).pow(2) as f64 + (by - y).pow(2) as f64).sqrt()).collect::<Vec<_>>()
-            ).flat_map(|x| x).sum();
-            s = s / (a.len() as f64 * b.len() as f64);
-            // XXX: todo
-        }
+//        let a = self.b.positions(self.ai);
+//        let b = self.b.positions(self.b.other_player(self.ai));
+//        let d = Dame::avg_distance(a, b);
+        //println!("d = {}", d);
 
-        let r = s0 * 20.0 + s1 * 1.0 + s2 * 3.0 + s3;
+        let r = s0 * 20.0 + s1 * 1.0 + s2 * 3.0 + s3; // + d * 0.1;
 
         r
     }
@@ -104,3 +123,23 @@ impl Game<DameMove> for Dame {
     }
 }
 
+
+#[cfg(test)]
+mod tests {
+    use Dame;
+
+    #[test]
+    fn dame_avg_distance() {
+        let mut a = vec![(0, 0)];
+        let mut b = vec![(7, 7)];
+        assert!((Dame::avg_distance(a, b) - 9.899).abs() < 0.001);
+
+        a = vec![(0, 0), (1, 1)];
+        b = vec![(7, 7), (6, 6)];
+        assert!((Dame::avg_distance(a, b) - 8.4853).abs() < 0.001);
+
+        a = vec![(0, 0), (1, 1)];
+        b = vec![(2, 2), (3, 4)];
+        assert!((Dame::avg_distance(a, b) - 3.212).abs() < 0.001);
+    }
+}

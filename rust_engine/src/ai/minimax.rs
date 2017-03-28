@@ -76,9 +76,9 @@ impl<Move: Clone + Copy + Debug> MiniMax<Move> {
         }
     }
 
-    pub fn minimax<T: Game<Move>>(&mut self, game: &T) -> Move {
+    pub fn minimax<T: Game<Move>>(&mut self, game: T) -> Move {
         self.start = PreciseTime::now();
-        let m = self._select_by(game, 0, Path::new());  // first move is done by AI
+        let m = self._select_by(&game, 0, Path::new());  // first move is done by AI
         self.score_winner = m.score;
         self.duration = self.start.to(PreciseTime::now()).num_milliseconds();
         self.path = m.path.p;

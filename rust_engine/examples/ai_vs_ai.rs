@@ -6,7 +6,7 @@ use engine::dame::Dame;
 
 fn main() {
     println!("running ...");
-
+/*
     let b = Board::new();
     let p = b.player();
 
@@ -32,6 +32,6 @@ fn main() {
         println!("moves: {:?}", d.b.get_last_moves());
         d.b.clear_last_moves();
     }
-
+*/
     println!("done");
 }
