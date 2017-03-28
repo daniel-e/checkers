@@ -1,16 +1,3 @@
-# Rules
-* white makes the first move
-* it is played on a 8x8 board
-* men can capture only forward
-* capturing is mandatory
-* kings can also move (and capture) backwards
-* a player without pieces remaining or who cannot move due to blocked pieces loses the game
-* no flying kings
-
-
-
-http://www.brettspielnetz.de/spielregeln/dame.php
-
 Neues Spiel
 -----------
 POST /rest/new/<white>/<black>
