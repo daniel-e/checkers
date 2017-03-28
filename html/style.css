@@ -1,0 +1,234 @@
+.bodystyle {
+	background: #E0F3FA
+}
+.heading {
+  font-family: 'Open Sans Condensed', sans-serif;
+  font-size: 83px;
+  text-align: center;
+  border-radius: 25px;
+  border: 1px solid #DA9484;
+  background: #b35900;
+  margin-top: 20px;
+  margin-bottom: 0px;
+  color: #ffffff;
+  text-shadow: 1px 1px #888888;
+}
+
+.status {
+	/* center middle horizontally */
+  margin-left: -300;
+  width: 600px;
+  height: 24px;
+  position:relative;
+  left: 50%;
+  margin-top: 8px;
+	margin-bottom: 8px;
+  display: table;
+  overflow: hidden;
+}
+.statusi {
+	font-family: 'Share Tech', sans-serif;
+  color: black;
+	font-size: 18px;
+	vertical-align: middle;
+	text-align: center;
+  display: table-cell;
+	overflow: hidden;
+}
+.spinning {
+	position: absolute;
+	margin-top: 8px;
+}
+
+/* display: table and display: table-cell required for vertical alignment */
+.box {
+  /* center middle horizontally */
+  margin-left: -300;
+  width: 600px;
+  height: 612px;
+
+  position:absolute;
+  left: 50%;
+  margin-top: 0px;
+  display: table;
+  overflow: hidden;
+}
+.boxi {
+  text-align: center;
+  color: #a02020;
+  font-weight: bold;
+  background: #B9DEEB;
+  vertical-align: middle;
+  display: table-cell;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.white {
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+  background: white;
+	cursor: pointer;
+}
+.black {
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+  background: black;
+	cursor: pointer;
+}
+.pos {
+  position: relative;
+  left: -549;
+  top: 57;
+}
+
+.piece {
+	height: 100%;
+	width: 100%;
+ 	display: table;
+}
+.normal {
+}
+.dame {
+	font-family: 'Open Sans Condensed', sans-serif;
+  font-size: 30px;
+	font-weight: bold;
+	text-align: center;
+	color: red;
+	cursor: pointer;
+	display: table-cell;
+	vertical-align: middle;
+}
+.selected {
+	background: red;
+}
+.possible {
+  width: 51px;
+  height: 51px;
+  border-radius: 5px;
+  border: 6px dashed #ff0000;
+	cursor: pointer;
+}
+
+
+.ask {
+	margin-left: -250;
+	margin-top: -100;
+  width: 500px;
+  height: 200px;
+
+  position:absolute;
+  left: 50%;
+  top: 50%;
+  display: table;
+  overflow: hidden;
+
+	background: #A15000;
+	border-radius: 10px;
+}
+.aski {
+	font-family: 'Open Sans Condensed', sans-serif;
+  font-size: 50px;
+	text-align: center;
+  color: white;
+  font-weight: bold;
+  background: #A15000;
+  vertical-align: middle;
+  display: table-cell;
+  overflow: hidden;
+}
+.choice {
+	color: #2020a0;
+	cursor: pointer;
+}
+
+
+.error {
+	margin-left: -200;
+	margin-top: -75;
+  width: 400px;
+  height: 150px;
+  position:absolute;
+  left: 50%;
+  top: 50%;
+  display: table;
+  overflow: hidden;
+	background: #a02020;
+	border-radius: 10px;
+}
+.errori {
+	font-family: 'Open Sans Condensed', sans-serif;
+  font-size: 50px;
+	text-align: center;
+  color: white;
+  font-weight: bold;
+  background: #a02020;
+  vertical-align: middle;
+  display: table-cell;
+  overflow: hidden;
+	color: #white;
+}
+
+.winner {
+	margin-left: -200;
+	margin-top: -75;
+  width: 400px;
+  height: 150px;
+  position:absolute;
+  left: 50%;
+  top: 50%;
+  display: table;
+  overflow: hidden;
+	background: #a02020;
+	border-radius: 10px;
+	z-index: 9999;
+}
+.winneri {
+	font-family: 'Open Sans Condensed', sans-serif;
+  font-size: 50px;
+	text-align: center;
+  color: white;
+  font-weight: bold;
+  background: #a02020;
+  vertical-align: middle;
+  display: table-cell;
+  overflow: hidden;
+	color: #white;
+}
+
+.vs {
+	padding-left: 20px;
+	padding-right: 20px;
+	color: #CC0606;
+	text-align: center;
+}
+.row {
+	display: table;
+  overflow: hidden;
+	vertical-align: middle;
+	text-align: center;
+	background: #BA620B;
+	width: 100%;
+}
+.cell {
+	display: table-cell;
+	overflow: hidden;
+	vertical-align: middle;
+	text-align: center;
+}
+.on {
+	text-decoration: underline;
+}
+.w {
+	color: white;
+	cursor: pointer;
+}
+.b {
+	color: black;
+	cursor: pointer;
+}
+.start {
+	cursor: pointer;
+}

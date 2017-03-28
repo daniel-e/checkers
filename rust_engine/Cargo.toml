@@ -1,0 +1,28 @@
+[package]
+name = "engine"
+version = "0.1.0"
+authors = ["dz <git.daniele@gmail.com>"]
+
+[dependencies]
+rustc-serialize = "*"
+rand = "*"
+time = "*"
+
+# compile release code with debug information
+[profile.release]
+debug = true
+
+[lib]
+name = "engine"
+crate-type = ["dylib", "rlib"]
+
+# dylib to create a shared library which can be included in python scripts
+# rlib is required to build the executable from main.rs
+
+[[example]]
+name = "ai_vs_ai"
+
+[dependencies.cpython]
+git = "https://github.com/dgrunwald/rust-cpython.git"
+default-features = false
+features = ["python3-sys"]

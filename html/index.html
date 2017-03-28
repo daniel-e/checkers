@@ -1,0 +1,68 @@
+<html>
+<head>
+	<script src="jquery-3.1.1.min.js"></script>
+	<link href="https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Share+Tech" rel="stylesheet">
+	<link rel="stylesheet" type="text/css" href="style.css">
+	<title>Beat the Dame AI</title>
+</head>
+<body class="bodystyle">
+	<div class="heading">
+		Beat the Dame AI
+	</div>
+
+	<div class="spinning">
+		<img src="wheel.svg" width="24" height="24">
+	</div>
+	<div class="status">
+		<div class="statusi">
+			Hallo ...
+		</div>
+	</div>
+
+	<div id="box" class="box">
+		<div id="boxboard"></div>
+    <div class="boxi">
+      <img src="chess-board.png" width="600" height="612">
+    </div>
+	</div>
+
+	<div class="ask">
+		<div class="aski">
+			SELECT THE MODE <br/>
+			<div class="row">
+				<div class="cell">
+					<div class="on w" id="white_human" onclick="mode('white', 'human');">human</div>
+					<div class="w" id="white_ai" onclick="mode('white', 'ai');">AI</div>
+				</div>
+				<div class="cell vs">vs</div>
+				<div class="cell">
+					<div class="b" id="black_human" onclick="mode('black', 'human');">human</div>
+					<div class="on b" id="black_ai" onclick="mode('black', 'ai');">AI</div>
+				</div>
+			</div>
+			<div class="start" onclick="start_game();">START</div>
+<!--
+			<span class="chosen whiteoption">human</span> / <span class="notchosen whiteoption">ai</span>
+			<span class="vs">vs</span>
+			<span class="notchosen blackoption">human</span> / <span class="chosen blackoption">ai</span> -->
+<!--			human / ai  vs  human / ai
+			<span class="choice" onclick="start('white');">white</span> or
+			<span class="choice" onclick="start('black')">black</span> -->
+		</div>
+	</div>
+
+	<div id="error" class="error">
+		<div class="errori">
+			Request failed.
+		</div>
+	</div>
+
+	<div id="winner" class="winner">
+		<div id="winnertxt" class="winneri">
+		</div>
+	</div>
+
+	<script src="code.js"></script>
+</body>
+</html>
