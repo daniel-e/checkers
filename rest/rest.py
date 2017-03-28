@@ -8,6 +8,7 @@ import engine
 parser = argparse.ArgumentParser(description = "")
 parser.add_argument("--port", type = int, default = 5002, help = "port")
 parser.add_argument("--load", type = str, help = "load board setting from file")
+parser.add_argument("--depth", type = int, default = 5, help = "maximum search depth")
 args = parser.parse_args()
 
 app = Flask(__name__)
@@ -16,10 +17,9 @@ q = multiprocessing.Queue()
 boards = {}
 colors = {}
 next_uid = None
-
 board_queues = {}
 
-ai_minimax = lambda q, uid: q.put((uid, engine.ai_minimax(boards[uid])))
+ai_minimax = lambda q, uid: q.put((uid, engine.ai_minimax(boards[uid], args.depth)))
 
 def update_board(uid, b, player):
     boards[uid] = b
