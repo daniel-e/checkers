@@ -22,6 +22,9 @@ crate-type = ["dylib", "rlib"]
 [[example]]
 name = "ai_vs_ai"
 
+[[example]]
+name = "perf"
+
 [dependencies.cpython]
 git = "https://github.com/dgrunwald/rust-cpython.git"
 default-features = false
