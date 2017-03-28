@@ -197,20 +197,21 @@ impl Board {
             .filter(|&&(x, y)| self.is_player(x, y, p)).cloned().collect()
     }
 
-    // TODO: optimize speed; makes many calls to "reserve" and "alloc"
-    fn move_piece(&self, x: i32, y: i32, ydirection: i32, p: Player) -> Vec<(i32, i32)> {
+    fn move_piece_v(&self, x: i32, y: i32, ydirection: i32, p: Player, v: &mut Vec<(i32, i32)>) {
         let dy1 = ydirection;
         let dy2 = ydirection * 2;
-        let x: [(i32, i32, bool); 4] = [
-            (x - 1, y + dy1, self.is_empty(x - 1, y + dy1)),
-            (x + 1, y + dy1, self.is_empty(x + 1, y + dy1)),
-            (x - 2, y + dy2, self.is_empty(x - 2, y + dy2) && self.is_player(x - 1, y + dy1, p)),
-            (x + 2, y + dy2, self.is_empty(x + 2, y + dy2) && self.is_player(x + 1, y + dy1, p))
-        ];
-        x.iter()
-            .filter(|&&(_, _, b)| b)
-            .map(|&(x, y, _)| (x, y))
-            .collect()
+        if self.is_empty(x - 1, y + dy1) {
+            v.push((x - 1, y + dy1));
+        }
+        if self.is_empty(x + 1, y + dy1) {
+            v.push((x + 1, y + dy1));
+        }
+        if self.is_empty(x - 2, y + dy2) && self.is_player(x - 1, y + dy1, p) {
+            v.push((x - 2, y + dy2));
+        }
+        if self.is_empty(x + 2, y + dy2) && self.is_player(x + 1, y + dy1, p) {
+            v.push((x + 2, y + dy2));
+        }
     }
 
     // Checks if the piece at (x, y) of the current player can jump over a piece of the opponent.
@@ -264,35 +265,34 @@ impl Board {
 
     // Returns points which the piece at (x, y) can move to.
     fn moves_for(&self, x: i32, y: i32) -> Option<Vec<Point>> {
-//        let mut vv: Vec<(i32, i32)> = Vec::new();
+        let mut v: Vec<(i32, i32)> = Vec::new();
 
-        match match self.color(x, y) {
+        match self.color(x, y) {
             Some(c) => {
                 if self.matching(c) {
                     match c {
                         Color::WhiteNormal => {
-                            Some(self.move_piece(x, y, 1, Player::Black))
+                            self.move_piece_v(x, y, 1, Player::Black, &mut v);
                         },
                         Color::WhiteDame => {
-                            Some(self.move_piece(x, y, 1, Player::Black)
-                                .iter().chain(self.move_piece(x, y, -1, Player::Black).iter()).cloned().collect())
+                            self.move_piece_v(x, y, 1, Player::Black, &mut v);
+                            self.move_piece_v(x, y, -1, Player::Black, &mut v);
                         },
                         Color::BlackNormal => {
-                            Some(self.move_piece(x, y, -1, Player::White))
+                            self.move_piece_v(x, y, -1, Player::White, &mut v);
                         },
                         Color::BlackDame => {
-                            Some(self.move_piece(x, y, 1, Player::White)
-                                .iter().chain(self.move_piece(x, y, -1, Player::White).iter()).cloned().collect())
+                            self.move_piece_v(x, y, 1, Player::White, &mut v);
+                            self.move_piece_v(x, y, -1, Player::White, &mut v);
                         },
-                        _ => None
+                        _ => { }
                     }
-                } else {
-                    None
                 }
             },
-            _ => None
-        } {
-            Some(v) => {
+            _ => { }
+        }
+
+
                 let r: Vec<Point> = v.clone().iter()
                     .filter(|&&(_, dy)| (dy - y).abs() == 2).map(|&(x, y)| Point::new(x, y))
                     .collect();
@@ -306,9 +306,6 @@ impl Board {
                         None
                     }
                 }
-            },
-            _ => None
-        }
     }
 
     pub fn clear_last_moves(&mut self) {
