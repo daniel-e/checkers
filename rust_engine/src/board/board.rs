@@ -113,10 +113,6 @@ impl Board {
             for k in 0..mf.n {
                 v.push((i.0, i.1, mf.v[k].0, mf.v[k].1));
             }
-//            let m = self.moves_for(i.0, i.1);
-//            for k in m {
-//                v.push((i.0, i.1, k.x, k.y));
-//            }
         }
         v
     }
@@ -241,14 +237,9 @@ impl Board {
 
     // Checks if the piece at (x, y) of the current player can jump over a piece of the opponent.
     fn can_remove_piece(&self, x: i32, y: i32) -> bool {
-
         let mut mf = MoveFor::new();
         self.get_moves_for(x, y, &mut mf);
         mf.v.iter().take(mf.n).any(|ref p| (p.0 - x).abs() == 2)
-
-//        let mut v: [(i32, i32); 4] = [(0, 0); 4];
-//        let pos = self.get_moves_for(x, y, &mut v);
-//        v.iter().take(pos).any(|ref p| (p.0 - x).abs() == 2)
     }
 
     // Checks if moving the piece at (x, y) is allowed.
@@ -257,35 +248,32 @@ impl Board {
             .any(|&(px, py)| px == x && py == y)
     }
 
-    fn pieces_that_can_move(&self) -> Vec<(i32, i32)> { // XXX
-        self.positions.iter()
-            .filter(|&&(x, y)| self.moves_for(x, y).n > 0).cloned()
-//            .filter(|&&(x, y)| self.moves_for(x, y).len() > 0).cloned()
-            .collect()
-    }
-
-    fn pieces_that_can_jump(&self) -> Vec<(i32, i32)> {
-        self.positions.iter()
-            .filter(|&&(x, y)| self.can_remove_piece(x, y)).cloned()
-            .collect()
-    }
 
     fn update_valid_pieces_to_move(&mut self) { // XXX
-        let t = self.pieces_that_can_jump();
 
-        self.valid_pieces_to_move = if t.len() > 0 {
-            t
-        } else {
-            self.pieces_that_can_move()
+        self.valid_pieces_to_move.clear();
+
+        for i in self.positions.iter() {
+            if self.can_remove_piece(i.0, i.1) {
+                self.valid_pieces_to_move.push((i.0, i.1));
+            }
+        }
+
+        if self.valid_pieces_to_move.len() == 0 {
+            for i in self.positions.iter() {
+                if self.moves_for(i.0, i.1).n > 0 {
+                    self.valid_pieces_to_move.push((i.0, i.1));
+                }
+            }
         }
     }
+
 
     pub fn mv(&self, x: i32, y: i32) -> Option<Vec<Point>> {
         // Check if piece is allowed to be moved.
         if self.moving_piece_is_allowed(x, y) {
             let mf = self.moves_for(x, y);
             Some(mf.v.iter().take(mf.n).map(|&(x, y)| Point::new(x, y)).collect())
-            //Some(self.moves_for(x, y))
         } else {
             None
         }
@@ -341,15 +329,9 @@ impl Board {
 
     // Returns points to which the piece at (x, y) can move to.
     fn moves_for(&self, x: i32, y: i32) -> MoveFor {
-//    fn moves_for(&self, x: i32, y: i32) -> Vec<Point> {
-
         let mut mf = MoveFor::new();
         self.get_moves_for(x, y, &mut mf);
         mf
-
-//        let mut v: [(i32, i32); 4] = [(0, 0); 4];
-//        let pos = self.get_moves_for(x, y, &mut v);
-//        v.iter().take(pos).map(|&(x, y)| Point::new(x, y)).collect()
     }
 
     pub fn clear_last_moves(&mut self) {
