@@ -209,23 +209,32 @@ impl Board {
     fn move_piece(&self, x: i32, y: i32, dy: i32, p: Player, v: &mut [(i32, i32)], pos: usize) -> usize {
 
         let mut i = pos;
+        let mut u = false;
 
-//        if pos > 0 && (v[0].0 - x).abs() == 1 {
-//            i = 0;
-//        }
+        if pos > 0 && (v[0].0 - x).abs() == 2 {
+            u = true;
+        }
 
         if self.is_empty(x - 2, y + dy * 2) && self.is_player(x - 1, y + dy, p) {
+            if !u {
+                i = 0;
+            }
             v[i] = (x - 2, y + dy * 2);
             i += 1;
+            u = true;
         }
         if self.is_empty(x + 2, y + dy * 2) && self.is_player(x + 1, y + dy, p) {
+            if !u {
+                i = 0;
+            }
             v[i] = (x + 2, y + dy * 2);
             i += 1;
+            u = true;
         }
 
         // If we have found a jump over a piece of the opponent we don't have to search for other
         // moves as the jump is mandatory.
-        if i == pos {
+        if !u {
             if self.is_empty(x - 1, y + dy) {
                 v[i] = (x - 1, y + dy);
                 i += 1;
@@ -281,52 +290,34 @@ impl Board {
         }
     }
 
-    fn process_moves_for(&self, v: &[(i32, i32)], x: i32, pos: usize, r: &mut MoveFor) {
-
-        r.n = 0;
-        for i in 0..pos {
-            if (v[i].0 - x).abs() == 2 {
-                r.v[r.n] = v[i];
-                r.n += 1;
-            }
-        }
-
-        if r.n == 0 {
-            r.n = pos;
-            r.v.iter_mut().take(pos).zip(v.iter().take(pos)).map(|(x, y)| *x = *y).count();
-        }
-    }
-
     fn get_moves_for(&self, x: i32, y: i32, r: &mut MoveFor) {
 
-        let mut v: [(i32, i32); 4] = [(0, 0); 4];
-        let mut pos = 0;
-
-        match self.color(x, y) {
+        r.n = match self.color(x, y) {
             Some(c) => {
                 if self.matching(c) {
                     match c {
                         Color::WhiteNormal => {
-                            pos = self.move_piece(x, y,  1, Player::Black, &mut v, 0);
+                            self.move_piece(x, y,  1, Player::Black, &mut r.v, 0)
                         },
                         Color::WhiteDame => {
-                            pos = self.move_piece(x, y,  1, Player::Black, &mut v, 0);
-                            pos = self.move_piece(x, y, -1, Player::Black, &mut v, pos);
+                            let p = self.move_piece(x, y,  1, Player::Black, &mut r.v, 0);
+                            self.move_piece(x, y, -1, Player::Black, &mut r.v, p)
                         },
                         Color::BlackNormal => {
-                            pos = self.move_piece(x, y, -1, Player::White, &mut v, 0);
+                            self.move_piece(x, y, -1, Player::White, &mut r.v, 0)
                         },
                         Color::BlackDame => {
-                            pos = self.move_piece(x, y,  1, Player::White, &mut v, 0);
-                            pos = self.move_piece(x, y, -1, Player::White, &mut v, pos);
+                            let p = self.move_piece(x, y,  1, Player::White, &mut r.v, 0);
+                            self.move_piece(x, y, -1, Player::White, &mut r.v, p)
                         },
-                        _ => { }
+                        _ => 0
                     }
+                } else {
+                    0
                 }
             },
-            _ => { }
+            _ => 0
         }
-        self.process_moves_for(&v, x, pos, r)
     }
 
     // Returns points to which the piece at (x, y) can move to.
