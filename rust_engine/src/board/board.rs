@@ -3,6 +3,20 @@ use std::iter::repeat;
 
 use board::point::Point;
 
+struct MoveFor {
+    pub v: [(i32, i32); 4],
+    pub n: usize
+}
+
+impl MoveFor {
+    pub fn new() -> MoveFor {
+        MoveFor {
+            v: [(0, 0); 4],
+            n: 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, Eq)]
 pub enum Color {
     Empty = 0,
@@ -95,15 +109,14 @@ impl Board {
         // TODO refactoring
         let mut v: Vec<(i32, i32, i32, i32)> = Vec::new();
         for i in self.movable_pieces() {
-            match self.moves_for(i.0, i.1) {
-                Some(m) => {
-                    for k in m {
-                        v.push((i.0, i.1, k.x, k.y));
-                    }
-
-                }
-                _ => {}
+            let mf = self.moves_for(i.0, i.1);
+            for k in 0..mf.n {
+                v.push((i.0, i.1, mf.v[k].0, mf.v[k].1));
             }
+//            let m = self.moves_for(i.0, i.1);
+//            for k in m {
+//                v.push((i.0, i.1, k.x, k.y));
+//            }
         }
         v
     }
@@ -201,14 +214,6 @@ impl Board {
 
         let mut i = pos;
 
-        if self.is_empty(x - 1, y + dy) {
-            v[i] = (x - 1, y + dy);
-            i += 1;
-        }
-        if self.is_empty(x + 1, y + dy) {
-            v[i] = (x + 1, y + dy);
-            i += 1;
-        }
         if self.is_empty(x - 2, y + dy * 2) && self.is_player(x - 1, y + dy, p) {
             v[i] = (x - 2, y + dy * 2);
             i += 1;
@@ -217,19 +222,33 @@ impl Board {
             v[i] = (x + 2, y + dy * 2);
             i += 1;
         }
+
+        // If we have found a jump over a piece of the opponent we don't have to search for other
+        // moves as the jump is mandatory.
+        if i == pos {
+            if self.is_empty(x - 1, y + dy) {
+                v[i] = (x - 1, y + dy);
+                i += 1;
+            }
+            if self.is_empty(x + 1, y + dy) {
+                v[i] = (x + 1, y + dy);
+                i += 1;
+            }
+        }
+
         i
     }
 
     // Checks if the piece at (x, y) of the current player can jump over a piece of the opponent.
     fn can_remove_piece(&self, x: i32, y: i32) -> bool {
-        match self.moves_for(x, y) {
-            Some(v) => {
-                // if there is a move with a delta x of 2 we have found a piece
-                // which can jump over a piece of the opponent
-                v.iter().any(|ref p| (p.x - x).abs() == 2)
-            },
-            _ => false
-        }
+
+        let mut mf = MoveFor::new();
+        self.get_moves_for(x, y, &mut mf);
+        mf.v.iter().take(mf.n).any(|ref p| (p.0 - x).abs() == 2)
+
+//        let mut v: [(i32, i32); 4] = [(0, 0); 4];
+//        let pos = self.get_moves_for(x, y, &mut v);
+//        v.iter().take(pos).any(|ref p| (p.0 - x).abs() == 2)
     }
 
     // Checks if moving the piece at (x, y) is allowed.
@@ -240,7 +259,8 @@ impl Board {
 
     fn pieces_that_can_move(&self) -> Vec<(i32, i32)> { // XXX
         self.positions.iter()
-            .filter(|&&(x, y)| self.moves_for(x, y).is_some()).cloned()
+            .filter(|&&(x, y)| self.moves_for(x, y).n > 0).cloned()
+//            .filter(|&&(x, y)| self.moves_for(x, y).len() > 0).cloned()
             .collect()
     }
 
@@ -263,14 +283,32 @@ impl Board {
     pub fn mv(&self, x: i32, y: i32) -> Option<Vec<Point>> {
         // Check if piece is allowed to be moved.
         if self.moving_piece_is_allowed(x, y) {
-            self.moves_for(x, y)
+            let mf = self.moves_for(x, y);
+            Some(mf.v.iter().take(mf.n).map(|&(x, y)| Point::new(x, y)).collect())
+            //Some(self.moves_for(x, y))
         } else {
             None
         }
     }
 
-    // Returns points to which the piece at (x, y) can move to.
-    fn moves_for(&self, x: i32, y: i32) -> Option<Vec<Point>> {
+    fn process_moves_for(&self, v: &[(i32, i32)], x: i32, pos: usize, r: &mut MoveFor) {
+
+        r.n = 0;
+        for i in 0..pos {
+            if (v[i].0 - x).abs() == 2 {
+                r.v[r.n] = v[i];
+                r.n += 1;
+            }
+        }
+
+        if r.n == 0 {
+            r.n = pos;
+            r.v.iter_mut().take(pos).zip(v.iter().take(pos)).map(|(x, y)| *x = *y).count();
+        }
+    }
+
+    fn get_moves_for(&self, x: i32, y: i32, r: &mut MoveFor) {
+
         let mut v: [(i32, i32); 4] = [(0, 0); 4];
         let mut pos = 0;
 
@@ -279,17 +317,17 @@ impl Board {
                 if self.matching(c) {
                     match c {
                         Color::WhiteNormal => {
-                            pos = self.move_piece(x, y, 1, Player::Black, &mut v, pos);
+                            pos = self.move_piece(x, y,  1, Player::Black, &mut v, 0);
                         },
                         Color::WhiteDame => {
-                            pos = self.move_piece(x, y, 1, Player::Black, &mut v, pos);
+                            pos = self.move_piece(x, y,  1, Player::Black, &mut v, 0);
                             pos = self.move_piece(x, y, -1, Player::Black, &mut v, pos);
                         },
                         Color::BlackNormal => {
-                            pos = self.move_piece(x, y, -1, Player::White, &mut v, pos);
+                            pos = self.move_piece(x, y, -1, Player::White, &mut v, 0);
                         },
                         Color::BlackDame => {
-                            pos = self.move_piece(x, y, 1, Player::White, &mut v, pos);
+                            pos = self.move_piece(x, y,  1, Player::White, &mut v, 0);
                             pos = self.move_piece(x, y, -1, Player::White, &mut v, pos);
                         },
                         _ => { }
@@ -298,21 +336,20 @@ impl Board {
             },
             _ => { }
         }
+        self.process_moves_for(&v, x, pos, r)
+    }
 
+    // Returns points to which the piece at (x, y) can move to.
+    fn moves_for(&self, x: i32, y: i32) -> MoveFor {
+//    fn moves_for(&self, x: i32, y: i32) -> Vec<Point> {
 
-        let r: Vec<Point> = v.iter().take(pos)
-            .filter(|&&(_, dy)| (dy - y).abs() == 2).map(|&(x, y)| Point::new(x, y))
-            .collect();
-        if r.len() > 0 {
-            Some(r)
-        } else {
-            let r: Vec<Point> = v.iter().take(pos).map(|&(x, y)| Point::new(x, y)).collect();
-            if r.len() > 0 {
-                Some(r)
-            } else {
-                None
-            }
-        }
+        let mut mf = MoveFor::new();
+        self.get_moves_for(x, y, &mut mf);
+        mf
+
+//        let mut v: [(i32, i32); 4] = [(0, 0); 4];
+//        let pos = self.get_moves_for(x, y, &mut v);
+//        v.iter().take(pos).map(|&(x, y)| Point::new(x, y)).collect()
     }
 
     pub fn clear_last_moves(&mut self) {
@@ -326,10 +363,10 @@ impl Board {
         }
 
         // Get all valid moves for this piece.
-        let v = self.moves_for(x, y).unwrap();
+        let mf = self.moves_for(x, y);
 
         // If (dx, dy) is not in the valid moves return.
-        if !v.iter().any(|ref p| p.x == dx && p.y == dy) {
+        if !mf.v.iter().take(mf.n).any(|ref p| p.0 == dx && p.1 == dy) {
             return;
         }
 
@@ -435,8 +472,7 @@ mod tests {
     #[test]
     fn moves_for() {
         let g = Board::new();
-        assert!(g.moves_for(1, 5).is_some());
-        assert!(g.moves_for(1, 5).unwrap().len() == 2);
+        assert!(g.moves_for(1, 5).len() == 2);
     }
 
     #[test]
