@@ -8,7 +8,7 @@ import engine
 parser = argparse.ArgumentParser(description = "")
 parser.add_argument("--port", type = int, default = 5002, help = "port")
 parser.add_argument("--load", type = str, help = "load board setting from file")
-parser.add_argument("--depth", type = int, default = 5, help = "maximum search depth")
+parser.add_argument("--depth", type = int, default = 7, help = "maximum search depth")
 args = parser.parse_args()
 
 app = Flask(__name__)
