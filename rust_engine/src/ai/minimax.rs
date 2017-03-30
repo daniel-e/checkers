@@ -1,6 +1,12 @@
 use rand::{Rng, thread_rng};
 use time::PreciseTime;
 use std::fmt::Debug;
+use std::marker::{Sync, Send};
+
+use std::sync::mpsc::{channel, Sender, Receiver};
+use std::thread;
+
+use pool::parallel;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Player {
@@ -8,11 +14,11 @@ pub enum Player {
     HUMAN
 }
 
-pub trait Game<Move: Clone + Copy + Debug> {
-    fn valid_moves(&self) -> Vec<Move>;
-    fn score(&self) -> f64;
-    fn set(&self, m: Move) -> Self;
-    fn finished(&self) -> bool;
+pub trait Game<Move: Clone + Copy + Debug + Sync + Send> {
+    fn valid_moves(&self)    -> Vec<Move>;
+    fn score(&self)          -> f64;
+    fn set(&self, m: Move)   -> Self;
+    fn finished(&self)       -> bool;
     fn current_player(&self) -> Player;
 }
 
@@ -25,14 +31,16 @@ pub struct MiniMax<Move> {
     path: Vec<Move>,
 }
 
+
 // -------------------------------------------------------------------------------------------------
 
+
 #[derive(Debug, Clone)]
-struct Path<Move: Clone + Copy + Debug> {
+struct Path<Move: Clone + Copy + Debug + Sync + Send> {
     p: Vec<Move>
 }
 
-impl<Move: Clone + Copy + Debug> Path<Move> {
+impl<Move: Clone + Copy + Debug + Sync + Send> Path<Move> {
     pub fn new() -> Path<Move> {
         Path {
             p: vec![]
@@ -48,22 +56,45 @@ impl<Move: Clone + Copy + Debug> Path<Move> {
     }
 }
 
+
+// -------------------------------------------------------------------------------------------------
+
+
 #[derive(Debug, Clone)]
-struct Score<Move: Clone + Copy + Debug> {
+struct Score<Move: Clone + Copy + Debug + Sync + Send> {
     path: Path<Move>,
     score: f64,
+    score_cnt: usize
 }
 
-impl<Move: Clone + Copy + Debug> Score<Move> {
+impl<Move: Clone + Copy + Debug + Sync + Send> Score<Move> {
+
     pub fn new(score: f64, p: Path<Move>) -> Score<Move> {
         Score {
             path: p,
-            score: score
+            score: score,
+            score_cnt: 1,
         }
+    }
+
+    pub fn set_n_scores(&self, n: usize) -> Score<Move> {
+        let mut s = self.clone();
+        s.score_cnt = n;
+        s
+    }
+
+    pub fn scores_count(&self) -> usize {
+        self.score_cnt
     }
 }
 
-impl<Move: Clone + Copy + Debug> MiniMax<Move> {
+
+// -------------------------------------------------------------------------------------------------
+
+
+impl<Move> MiniMax<Move>
+    where Move: Clone + Copy + Debug + Sync + Send + 'static
+{
 
     pub fn new(max_recurions: usize) -> MiniMax<Move> {
         MiniMax {
@@ -76,11 +107,15 @@ impl<Move: Clone + Copy + Debug> MiniMax<Move> {
         }
     }
 
-    pub fn minimax<T: Game<Move>>(&mut self, game: T) -> Move {
+    pub fn minimax<T>(&mut self, game: T) -> Move
+        where T: Game<Move> + Sync + Send + Clone + 'static
+    {
         self.start = PreciseTime::now();
-        let m = self._select_by(&game, 0, Path::new());  // first move is done by AI
+        let x = self.max_recursion;
+        let m = MiniMax::_select_by(&game, 0, Path::new(), x);  // first move is done by AI
         self.score_winner = m.score;
         self.duration = self.start.to(PreciseTime::now()).num_milliseconds();
+        self.score_cnt = m.scores_count();
         self.path = m.path.p;
         self.path.first().unwrap().clone()
     }
@@ -103,27 +138,28 @@ impl<Move: Clone + Copy + Debug> MiniMax<Move> {
         self.score_winner
     }
 
-    fn _ai_minimax<T: Game<Move>>(&mut self, game: &T, m: Move, rec: usize, path: Path<Move>) -> Score<Move> {
+    fn _ai_minimax<T>(game: &T, m: Move, rec: usize, path: Path<Move>, maxrec: usize) -> Score<Move>
+        where T: Game<Move> + Sync + Send + Clone + 'static
+    {
 
         let g: T = game.set(m);
         let p = path.push(m);
 
-        if g.finished() || rec >= 1000 {
-            self.score_cnt += 1;
-            Score::new(g.score(), p)
-        } else if rec >= self.max_recursion { //&& self.start.to(PreciseTime::now()).num_milliseconds() > 1000 { // TODO
-            self.score_cnt += 1;
+        if g.finished() || rec >= maxrec {
             Score::new(g.score(), p)
         } else {
-            self._select_by(&g, rec + 1, p)
+            MiniMax::_select_by(&g, rec + 1, p, maxrec)
         }
     }
 
-    fn _select_by<T: Game<Move>>(&mut self, game: &T, rec: usize, path: Path<Move>) -> Score<Move> {
-
+    fn _select_by<T>(game: &T, rec: usize, path: Path<Move>, maxrec: usize) -> Score<Move>
+        where T: Game<Move> + Sync + Send + Clone + 'static
+    {
         // Compute the score for each valid move.
         let scores = game.valid_moves()
-            .iter().map(|&mv| self._ai_minimax(game, mv, rec, path.clone())).collect::<Vec<_>>();
+            .iter().map(|&mv| MiniMax::_ai_minimax(game, mv, rec, path.clone(), maxrec)).collect::<Vec<_>>();
+
+        let n: usize = scores.iter().map(|s| s.scores_count()).sum();
 
         // Search the maximum/minimum score depending on the player.
         let x = match game.current_player() {
@@ -134,8 +170,41 @@ impl<Move: Clone + Copy + Debug> MiniMax<Move> {
         // TODO what happens if there's no valid move anymore; can this happen or will there be finished() == true
 
         // Select a move at random among the maximums/minimums.
-        (**thread_rng().choose(&
-            scores.iter().filter(|s| s.score == x.score).collect::<Vec<_>>()).unwrap()).clone()
+        (**thread_rng()
+            .choose(&scores.iter().filter(|s| s.score == x.score).collect::<Vec<_>>()).unwrap()
+        ).clone().set_n_scores(n)
     }
 }
+
+
+
+
+//pub fn do_minimax<T: Game<Move> + Sync + Send + Clone + 'static>(game: T) -> Move {
+//
+//
+//    let (tx, rx) = channel();
+//    let (t, r) = channel();
+//
+//    thread::spawn(move || {
+//        loop {
+//            match rx.recv() {
+//                Ok((game, mv, rec, path)) => {
+//                    let res = self._ai_minimax(game, mv, rec, path.clone());
+//                    t.send(12).unwrap();
+//                },
+//                _ => {}
+//            }
+//        }
+//    });
+//
+//    for i in game.valid_moves() {
+//        tx.send((game.clone(), i, rec, path.clone())).unwrap();
+//    }
+//    for i in game.valid_moves() {
+//        let k = r.recv().unwrap();
+//        println!("{:?}", k);
+//    }
+//}
+//
+//
 
