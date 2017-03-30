@@ -210,6 +210,10 @@ impl Board {
 
         let mut i = pos;
 
+//        if pos > 0 && (v[0].0 - x).abs() == 1 {
+//            i = 0;
+//        }
+
         if self.is_empty(x - 2, y + dy * 2) && self.is_player(x - 1, y + dy, p) {
             v[i] = (x - 2, y + dy * 2);
             i += 1;
@@ -248,7 +252,6 @@ impl Board {
             .any(|&(px, py)| px == x && py == y)
     }
 
-
     fn update_valid_pieces_to_move(&mut self) { // XXX
 
         self.valid_pieces_to_move.clear();
@@ -267,7 +270,6 @@ impl Board {
             }
         }
     }
-
 
     pub fn mv(&self, x: i32, y: i32) -> Option<Vec<Point>> {
         // Check if piece is allowed to be moved.
