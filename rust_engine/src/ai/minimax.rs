@@ -1,12 +1,11 @@
 use rand::{Rng, thread_rng};
 use time::PreciseTime;
 use std::fmt::Debug;
-use std::marker::{Sync, Send};
+use std::marker::Send;
 
-use std::sync::mpsc::{channel, Sender, Receiver};
-use std::thread;
-
-use pool::parallel;
+use futures::Future;
+use futures::future::{FutureResult, err, ok, lazy};
+use futures_cpupool::CpuPool;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Player {
@@ -14,7 +13,9 @@ pub enum Player {
     HUMAN
 }
 
-pub trait Game<Move: Clone + Copy + Debug + Sync + Send> {
+pub trait Game<Move>
+    where Move: Clone + Copy + Debug
+{
     fn valid_moves(&self)    -> Vec<Move>;
     fn score(&self)          -> f64;
     fn set(&self, m: Move)   -> Self;
@@ -36,11 +37,11 @@ pub struct MiniMax<Move> {
 
 
 #[derive(Debug, Clone)]
-struct Path<Move: Clone + Copy + Debug + Sync + Send> {
+struct Path<Move: Clone + Copy + Debug> {
     p: Vec<Move>
 }
 
-impl<Move: Clone + Copy + Debug + Sync + Send> Path<Move> {
+impl<Move: Clone + Copy + Debug> Path<Move> {
     pub fn new() -> Path<Move> {
         Path {
             p: vec![]
@@ -61,13 +62,13 @@ impl<Move: Clone + Copy + Debug + Sync + Send> Path<Move> {
 
 
 #[derive(Debug, Clone)]
-struct Score<Move: Clone + Copy + Debug + Sync + Send> {
+struct Score<Move: Clone + Copy + Debug> {
     path: Path<Move>,
     score: f64,
     score_cnt: usize
 }
 
-impl<Move: Clone + Copy + Debug + Sync + Send> Score<Move> {
+impl<Move: Clone + Copy + Debug> Score<Move> {
 
     pub fn new(score: f64, p: Path<Move>) -> Score<Move> {
         Score {
@@ -93,7 +94,7 @@ impl<Move: Clone + Copy + Debug + Sync + Send> Score<Move> {
 
 
 impl<Move> MiniMax<Move>
-    where Move: Clone + Copy + Debug + Sync + Send + 'static
+    where Move: Clone + Copy + Debug + Send + Sync + 'static
 {
 
     pub fn new(max_recurions: usize) -> MiniMax<Move> {
@@ -108,7 +109,7 @@ impl<Move> MiniMax<Move>
     }
 
     pub fn minimax<T>(&mut self, game: T) -> Move
-        where T: Game<Move> + Sync + Send + Clone + 'static
+        where T: Game<Move> + Clone + Send + Sync + 'static
     {
         self.start = PreciseTime::now();
         let x = self.max_recursion;
@@ -139,7 +140,7 @@ impl<Move> MiniMax<Move>
     }
 
     fn _ai_minimax<T>(game: &T, m: Move, rec: usize, path: Path<Move>, maxrec: usize) -> Score<Move>
-        where T: Game<Move> + Sync + Send + Clone + 'static
+        where T: Game<Move> + Clone + Send + Sync + 'static
     {
 
         let g: T = game.set(m);
@@ -153,11 +154,24 @@ impl<Move> MiniMax<Move>
     }
 
     fn _select_by<T>(game: &T, rec: usize, path: Path<Move>, maxrec: usize) -> Score<Move>
-        where T: Game<Move> + Sync + Send + Clone + 'static
+        where T: Game<Move> + Clone + Send + Sync + 'static
     {
         // Compute the score for each valid move.
-        let scores = game.valid_moves()
-            .iter().map(|&mv| MiniMax::_ai_minimax(game, mv, rec, path.clone(), maxrec)).collect::<Vec<_>>();
+        let scores = if rec == 0 {
+            let jobs = game.valid_moves().iter().map(|&mv| {
+                Job {
+                    game: game.clone(),
+                    rec: rec,
+                    path: path.clone(),
+                    maxrec: maxrec,
+                    mv: mv
+                }
+            }).collect::<Vec<_>>();
+            parallel(jobs)
+        } else {
+            game.valid_moves()
+                .iter().map(|&mv| MiniMax::_ai_minimax(game, mv, rec, path.clone(), maxrec)).collect::<Vec<_>>()
+        };
 
         let n: usize = scores.iter().map(|s| s.scores_count()).sum();
 
@@ -176,35 +190,29 @@ impl<Move> MiniMax<Move>
     }
 }
 
+struct Job<T, Move>
+    where T   : Game<Move> + Clone + Send + Sync + 'static,
+          Move: Clone + Copy + Debug + Send + Sync + 'static
+{
+    game: T,
+    rec: usize,
+    path: Path<Move>,
+    maxrec: usize,
+    mv: Move
+}
 
+fn parallel<T, Move>(v: Vec<Job<T, Move>>) -> Vec<Score<Move>>
+    where T   : Game<Move> + Clone + Send + Sync + 'static,
+          Move: Clone + Copy + Debug + Send + Sync + 'static
+{
+    let pool = CpuPool::new(4);
 
+    let f = v.iter().map(|j| pool.spawn_fn(move || {
+        let r = MiniMax::_ai_minimax(&j.game, j.mv, j.rec, j.path.clone(), j.maxrec);
+        let res: FutureResult<Score<Move>, ()> = ok(r);
+        res
+    })).collect::<Vec<_>>();
 
-//pub fn do_minimax<T: Game<Move> + Sync + Send + Clone + 'static>(game: T) -> Move {
-//
-//
-//    let (tx, rx) = channel();
-//    let (t, r) = channel();
-//
-//    thread::spawn(move || {
-//        loop {
-//            match rx.recv() {
-//                Ok((game, mv, rec, path)) => {
-//                    let res = self._ai_minimax(game, mv, rec, path.clone());
-//                    t.send(12).unwrap();
-//                },
-//                _ => {}
-//            }
-//        }
-//    });
-//
-//    for i in game.valid_moves() {
-//        tx.send((game.clone(), i, rec, path.clone())).unwrap();
-//    }
-//    for i in game.valid_moves() {
-//        let k = r.recv().unwrap();
-//        println!("{:?}", k);
-//    }
-//}
-//
-//
+    f.into_iter().map(|x| x.wait().unwrap().clone()).collect::<Vec<_>>()
+}
 

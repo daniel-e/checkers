@@ -7,6 +7,8 @@ authors = ["dz <git.daniele@gmail.com>"]
 rustc-serialize = "*"
 rand = "*"
 time = "*"
+futures = "*"
+futures-cpupool = "*"
 
 # compile release code with debug information
 [profile.release]

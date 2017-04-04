@@ -3,6 +3,8 @@ extern crate cpython;
 extern crate rustc_serialize;
 extern crate rand;
 extern crate time;
+extern crate futures;
+extern crate futures_cpupool;
 
 use rustc_serialize::json;
 use cpython::{Python, PyResult};
@@ -10,7 +12,6 @@ use cpython::{Python, PyResult};
 pub mod board;
 pub mod ai;
 pub mod dame;
-pub mod pool;
 
 use ai::minimax::MiniMax;
 use board::board::Board;
