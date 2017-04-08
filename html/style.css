@@ -1,13 +1,13 @@
 .bodystyle {
-	background: #E0F3FA
+	background: #B3BDAC
 }
 .heading {
   font-family: 'Open Sans Condensed', sans-serif;
   font-size: 83px;
   text-align: center;
   border-radius: 25px;
-  border: 1px solid #DA9484;
-  background: #b35900;
+  border: 1px solid #333141;
+  background: #615D5D;
   margin-top: 20px;
   margin-bottom: 0px;
   color: #ffffff;
@@ -134,7 +134,7 @@
 	text-align: center;
   color: white;
   font-weight: bold;
-  background: #A15000;
+  background: #2A404C;
   vertical-align: middle;
   display: table-cell;
   overflow: hidden;
@@ -209,7 +209,7 @@
   overflow: hidden;
 	vertical-align: middle;
 	text-align: center;
-	background: #BA620B;
+	background: #6B8176;
 	width: 100%;
 }
 .cell {
