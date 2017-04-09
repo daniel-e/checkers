@@ -3,9 +3,8 @@ use time::PreciseTime;
 use std::fmt::Debug;
 
 use std::sync::Arc;
-use std::thread;
-use futures_cpupool::{CpuPool, CpuFuture};
-use futures::future::{FutureResult, ok, lazy, BoxFuture};
+use futures_cpupool::CpuPool;
+use futures::future::{ok, lazy, BoxFuture};
 use futures::Future;
 
 #[derive(Debug, Clone, Copy)]
@@ -96,6 +95,7 @@ impl<Move: Clone + Copy + Debug + Send> Score<Move> {
 
 // -------------------------------------------------------------------------------------------------
 
+type ThreadPools = Arc<Vec<CpuPool>>;
 
 impl<Move> MiniMax<Move>
     where Move: Clone + Copy + Debug + Send + Sync + 'static
@@ -115,9 +115,11 @@ impl<Move> MiniMax<Move>
     pub fn minimax<T>(&mut self, game: T) -> Move
         where T: Game<Move> + Clone + Send + Sync + 'static
     {
+        let pools = Arc::new(vec![CpuPool::new_num_cpus(), CpuPool::new_num_cpus(), CpuPool::new_num_cpus()]);
+
         self.start = PreciseTime::now();
         let x = self.max_recursion;
-        let m = MiniMax::_select_by(Arc::new(game), 0, Path::new(), x);  // first move is done by AI
+        let m = MiniMax::_select_by(Arc::new(game), 0, Path::new(), x, pools.clone());  // first move is done by AI
         self.score_winner = m.score;
         self.duration = self.start.to(PreciseTime::now()).num_milliseconds();
         self.score_cnt = m.scores_count();
@@ -143,7 +145,7 @@ impl<Move> MiniMax<Move>
         self.score_winner
     }
 
-    fn _ai_minimax<T>(game: Arc<T>, m: Move, rec: usize, path: Path<Move>, maxrec: usize) -> Score<Move>
+    fn _ai_minimax<T>(game: Arc<T>, m: Move, rec: usize, path: Path<Move>, maxrec: usize, tp: ThreadPools) -> Score<Move>
         where T: Game<Move> + Clone + Send + Sync + 'static
     {
 
@@ -153,16 +155,16 @@ impl<Move> MiniMax<Move>
         if g.finished() || rec >= maxrec {
             Score::new(g.score(), p)
         } else {
-            MiniMax::_select_by(g, rec + 1, p, maxrec)
+            MiniMax::_select_by(g, rec + 1, p, maxrec, tp)
         }
     }
 
-    fn _select_by<T>(game: Arc<T>, rec: usize, path: Path<Move>, maxrec: usize) -> Score<Move>
+    fn _select_by<T>(game: Arc<T>, rec: usize, path: Path<Move>, maxrec: usize, tp: ThreadPools) -> Score<Move>
         where T: Game<Move> + Clone + Send + Sync + 'static
     {
         // Compute the score for each valid move.
         let moves  = game.valid_moves();
-        let scores = compute_scores(moves, game.clone(), rec, path, maxrec);
+        let scores = compute_scores(moves, game.clone(), rec, path, maxrec, tp);
 
         let n: usize = scores.iter().map(|s| s.scores_count()).sum();
 
@@ -181,30 +183,29 @@ impl<Move> MiniMax<Move>
     }
 }
 
-fn create_job<T, Move>(game: Arc<T>, mv: Move, rec: usize, path: Path<Move>, maxrec: usize)
+fn create_job<T, Move>(game: Arc<T>, mv: Move, rec: usize, path: Path<Move>, maxrec: usize, tp: ThreadPools)
     -> BoxFuture<Score<Move>, ()>
     where Move: Clone + Copy + Debug + Send + Sync + 'static,
           T   : Game<Move> + Clone + Send + Sync + 'static
 {
     lazy(move || {
-        let r = MiniMax::_ai_minimax(game.clone(), mv, rec, path.clone(), maxrec);
+        let r = MiniMax::_ai_minimax(game.clone(), mv, rec, path.clone(), maxrec, tp);
         ok(r)
     }).boxed()
 }
 
-fn compute_scores<T, Move>(moves: Vec<Move>, game: Arc<T>, rec: usize, path: Path<Move>, maxrec: usize) -> Vec<Score<Move>>
+fn compute_scores<T, Move>(moves: Vec<Move>, game: Arc<T>, rec: usize, path: Path<Move>, maxrec: usize, tp: ThreadPools) -> Vec<Score<Move>>
     where Move: Clone + Copy + Debug + Send + Sync + 'static,
           T   : Game<Move> + Clone + Send + Sync + 'static
 {
-    if rec == 0 {
-        let pool = CpuPool::new(4);
+    if rec < tp.len() {
         let f = moves.into_iter()
-            .map(|mv| pool.spawn(create_job(game.clone(), mv, rec, path.clone(), maxrec)))
+            .map(|mv| tp[rec].spawn(create_job(game.clone(), mv, rec, path.clone(), maxrec, tp.clone())))
             .collect::<Vec<_>>();
         let r = f.into_iter().map(|x| x.wait().unwrap()).collect();
         r
     } else {
-        moves.iter().map(|&mv| MiniMax::_ai_minimax(game.clone(), mv, rec, path.clone(), maxrec))
+        moves.iter().map(|&mv| MiniMax::_ai_minimax(game.clone(), mv, rec, path.clone(), maxrec, tp.clone()))
             .collect::<Vec<_>>()
     }
 }
